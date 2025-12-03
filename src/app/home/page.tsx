@@ -12,7 +12,7 @@ import { db, storage } from '../../firebase';
 import { collection, addDoc, onSnapshot, query, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from '../../hooks/useAuth';
-import { Timestamp } from '@google-cloud/firestore';
+// import { Timestamp } from '@google-cloud/firestore';
 
 // Card type
 interface CardType {
