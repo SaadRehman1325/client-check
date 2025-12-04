@@ -1,17 +1,20 @@
 'use client';
 
 import { useState, useEffect, ChangeEvent, FormEvent, useRef, useMemo } from 'react';
-import { FiPlus, FiSearch, FiCheckCircle, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiCheckCircle, FiDownload, FiLogOut, FiUser } from 'react-icons/fi';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import InputField from '../components/InputField';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { db, storage } from '../../firebase';
+import { db, storage, auth } from '../../firebase';
 import { collection, addDoc, onSnapshot, query, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { signOut } from "firebase/auth";
 import { useAuth } from '../../hooks/useAuth';
+import { useUserData } from '../../hooks/useUserData';
+import { useRouter } from 'next/navigation';
 // import { Timestamp } from '@google-cloud/firestore';
 
 // Card type
@@ -42,8 +45,13 @@ export default function HomePage() {
   const [viewMode, setViewMode] = useState<'cards' | 'map'>('cards');
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { userData } = useUserData(user);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const router = useRouter();
 
   // Fetch cards from Firestore
   useEffect(() => {
@@ -66,6 +74,22 @@ export default function HomePage() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Handle logout
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+    try {
+      // Clear user data from localStorage
+      localStorage.removeItem('clientcheck_user_data');
+      await signOut(auth);
+      // Redirect to login page after successful logout
+      router.push('/login');
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      setAddError(error.message || 'Failed to logout. Please try again.');
+      setLogoutLoading(false);
+    }
+  };
 
   // Export cards as CSV
   const handleExport = () => {
@@ -150,7 +174,7 @@ export default function HomePage() {
         ...card,
         image: imageUrl,
         badge: {
-          letter: user.displayName ? user.displayName[0].toUpperCase() : "U",
+          letter: userData?.name ? userData.name[0].toUpperCase() : (user.displayName ? user.displayName[0].toUpperCase() : "U"),
           color: getRandomBadgeColor()
         },
         lat,
@@ -216,37 +240,112 @@ export default function HomePage() {
     <ProtectedRoute>
       <div className="min-h-screen pb-10 bg-gradient-to-br from-blue-50 via-purple-50 to-white transition-colors duration-500">
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-blue-200 shadow-md">
-          <div className="max-w-7xl mx-auto flex items-center px-10 py-5">
-            <div className="flex items-center gap-6 flex-grow">
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-blue-200 shadow-md px-8">
+          <div className="w-full flex items-center justify-between py-5">
+            <div className="flex items-center gap-6">
               <div className="bg-gradient-to-br from-purple-400 to-blue-400 rounded-full p-3 shadow">
                 <FiCheckCircle className="text-white text-3xl" />
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-2xl font-extrabold text-gray-900 tracking-tight">Client Check</span>
-                <div className="text-xs text-gray-500 font-medium">Your trusted service dashboard</div>
+                <div className="text-xs text-gray-500 font-medium">Your trusted location dashboard</div>
               </div>
             </div>
-            {/* Simple Toggle Button */}
-            <button
-              className="flex items-center ml-8 px-4 py-2 rounded-xl border border-blue-400 bg-white text-blue-700 font-semibold shadow transition hover:bg-blue-50"
-              onClick={() => setViewMode(viewMode === 'cards' ? 'map' : 'cards')}
-              style={{ minWidth: 120 }}
-            >
-              <span
-                className={`mr-2 inline-block w-5 h-5 rounded-full transition-all duration-300 ${
-                  viewMode === 'cards' ? 'bg-purple-400' : 'bg-blue-400'
-                }`}
-              ></span>
-              {viewMode === 'cards' ? 'Show Map' : 'Show Cards'}
-            </button>
-            <button
-              className="flex items-center gap-2 px-6 py-2 rounded-xl bg-gradient-to-r from-purple-400 to-blue-400 text-white font-semibold shadow hover:from-purple-500 hover:to-blue-500 transition ml-8"
-              onClick={handleExport}
-            >
-              <FiDownload className="text-lg" />
-              Export
-            </button>
+            {/* Right side buttons */}
+            <div className="flex items-center gap-5">
+              {/* Simple Toggle Button */}
+              <button
+                className="flex items-center px-4 py-2 rounded-xl border border-blue-400 bg-white text-blue-700 font-semibold shadow transition hover:bg-blue-50 cursor-pointer"
+                onClick={() => setViewMode(viewMode === 'cards' ? 'map' : 'cards')}
+                style={{ minWidth: 120 }}
+              >
+                <span
+                  className={`mr-2 inline-block w-5 h-5 rounded-full transition-all duration-300 ${
+                    viewMode === 'cards' ? 'bg-purple-400' : 'bg-blue-400'
+                  }`}
+                ></span>
+                {viewMode === 'cards' ? 'Show Map' : 'Show Cards'}
+              </button>
+              <button
+                className="flex items-center gap-2 px-6 py-2 rounded-xl bg-gradient-to-r from-purple-400 to-blue-400 text-white font-semibold shadow hover:from-purple-500 hover:to-blue-500 transition cursor-pointer"
+                onClick={handleExport}
+              >
+                <FiDownload className="text-lg" />
+                Export
+              </button>
+              {/* User Profile Dropdown */}
+              <div className="relative">
+              <button
+                className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition cursor-pointer shadow-sm"
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                title="User Menu"
+              >
+                {/* User Avatar */}
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                  {userData?.name?.[0]?.toUpperCase() || 'U'}
+                </div>
+                {/* User Info */}
+                <div className="hidden md:flex flex-col items-start">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {userData?.name || 'User'}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {userData?.email || user?.email || ''}
+                  </span>
+                </div>
+                {/* Dropdown Arrow */}
+                <svg 
+                  className={`w-5 h-5 text-gray-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Dropdown Menu */}
+              {showUserDropdown && (
+                <>
+                  {/* Backdrop to close dropdown */}
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowUserDropdown(false)}
+                  ></div>
+                  {/* Dropdown Content */}
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                    {/* User Info Section */}
+                    <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                          {userData?.name?.[0]?.toUpperCase() || user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
+                        </div>
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <span className="text-sm font-semibold text-gray-900 truncate">
+                            {userData?.name || user?.displayName || 'User'}
+                          </span>
+                          <span className="text-xs text-gray-500 truncate">
+                            {userData?.email || user?.email || ''}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Logout Option */}
+                    <button
+                      className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-red-50 text-red-600 transition cursor-pointer"
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        setShowLogoutModal(true);
+                      }}
+                    >
+                      <FiLogOut className="text-lg" />
+                      <span className="font-medium">Logout</span>
+                    </button>
+                  </div>
+                </>
+              )}
+              </div>
+            </div>
           </div>
         </header>
 
@@ -364,7 +463,7 @@ export default function HomePage() {
         {viewMode === 'cards' && (
           <div className="fixed bottom-8 right-8 z-50 group">
             <button
-              className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 shadow-xl flex items-center justify-center text-white text-3xl hover:scale-110 hover:animate-bounce transition-all duration-200"
+              className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 shadow-xl flex items-center justify-center text-white text-3xl hover:scale-110 hover:animate-bounce transition-all duration-200 cursor-pointer"
               onClick={() => setShowModal(true)}
               aria-label="Add Card"
             >
@@ -374,6 +473,61 @@ export default function HomePage() {
               Add new card
             </span>
           </div>
+        )}
+
+        {/* Logout Confirmation Modal */}
+        {showLogoutModal && (
+          <Modal open={true} onClose={() => !logoutLoading && setShowLogoutModal(false)}>
+            <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md flex flex-col gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <FiLogOut className="text-red-600 text-2xl" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Confirm Logout</h2>
+                  <p className="text-sm text-gray-500 mt-1">Are you sure you want to logout?</p>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <p className="text-sm text-gray-700">
+                  You will need to login again to access your account.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutModal(false)}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition cursor-pointer disabled:cursor-not-allowed"
+                  disabled={logoutLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={logoutLoading}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl hover:from-red-600 hover:to-red-700 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {logoutLoading ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                      </svg>
+                      Logging out...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <FiLogOut className="w-5 h-5" />
+                      Logout
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </Modal>
         )}
 
         {/* Modal Form */}
@@ -637,7 +791,7 @@ function ModalForm({ onClose, onSubmit, loading, error }: ModalFormProps) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition"
+            className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition cursor-pointer disabled:cursor-not-allowed"
             disabled={loading}
           >
             Cancel

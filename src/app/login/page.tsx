@@ -4,9 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import InputField from '../components/InputField';
 import Button from '../components/Button';
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
-import { app } from '../../firebase';
+import { app, auth } from '../../firebase';
+import { clearUserData } from '../../hooks/useUserData';
 
 function validateEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -38,11 +39,23 @@ export default function LoginPage() {
     if (Object.keys(newErrors).length === 0) {
       setLoading(true);
       try {
-        const auth = getAuth(app);
         const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
         
-        // Check subscription status
+        // Clear any old user data from localStorage
+        clearUserData();
+        
+        // Fetch user data from Firestore
         const db = getFirestore(app);
+        const userRef = doc(db, 'users', userCredential.user.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          // Store user data in localStorage
+          const userData = userDoc.data();
+          localStorage.setItem('clientcheck_user_data', JSON.stringify(userData));
+        }
+        
+        // Check subscription status
         const subscriptionRef = doc(db, 'subscriptions', userCredential.user.uid);
         const subscriptionDoc = await getDoc(subscriptionRef);
 

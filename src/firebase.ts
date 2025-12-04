@@ -3,13 +3,14 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyDfqNsFcTV91Fs-TljV6wLJ91hktHvnOPc",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: "clientcheck-e4df8.firebaseapp.com",
   projectId: "clientcheck-e4df8",
   storageBucket: "clientcheck-e4df8.firebasestorage.app",
@@ -34,4 +35,14 @@ if (typeof window !== "undefined") {
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-export { app, analytics, db, storage };
+// Configure auth persistence - users stay logged in across browser sessions
+const auth = getAuth(app);
+// Set persistence to LOCAL (default, but explicit is better)
+// This persists auth state in localStorage
+if (typeof window !== "undefined") {
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error("Error setting auth persistence:", error);
+  });
+}
+
+export { app, analytics, db, storage, auth };

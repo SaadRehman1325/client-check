@@ -6,7 +6,7 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const Button: React.FC<ButtonProps> = ({ variant = 'primary', className = '', ...props }) => {
   const base =
-    'w-full py-4 rounded-2xl font-semibold text-lg shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-purple-300';
+    'w-full py-4 rounded-2xl font-semibold text-lg shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-purple-300 cursor-pointer disabled:cursor-not-allowed';
   const variants = {
     primary:
       'bg-gradient-to-r from-purple-400 to-blue-400 text-white hover:from-purple-500 hover:to-blue-500',

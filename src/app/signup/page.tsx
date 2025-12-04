@@ -4,9 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import InputField from '../components/InputField';
 import Button from '../components/Button';
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { app } from '../../firebase';
+import { app, auth } from '../../firebase';
 
 function validateEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -39,7 +39,6 @@ export default function SignupPage() {
     if (Object.keys(newErrors).length === 0) {
       setLoading(true);
       try {
-        const auth = getAuth(app);
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           formData.email,
@@ -54,14 +53,26 @@ export default function SignupPage() {
         // Create user document in Firestore
         const db = getFirestore(app);
         const userRef = doc(db, 'users', userCredential.user.uid);
-        await setDoc(userRef, {
+        const userData = {
           name: formData.name,
           email: formData.email.toLocaleLowerCase(),
           userId: userCredential.user.uid,
           userType: 'user',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        });
+        };
+        await setDoc(userRef, userData);
+        
+        // Store user data in localStorage
+        // Note: We exclude Timestamp objects from localStorage
+        const userDataForStorage = {
+          name: formData.name,
+          email: formData.email.toLocaleLowerCase(),
+          userId: userCredential.user.uid,
+          userType: 'user',
+        };
+        localStorage.setItem('clientcheck_user_data', JSON.stringify(userDataForStorage));
+        
         router.push('/packages');
       } catch (error: any) {
         setFirebaseError(error.message || "Signup failed");
