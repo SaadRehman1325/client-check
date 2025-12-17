@@ -53,6 +53,18 @@ export default function HomePage() {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const router = useRouter();
 
+  // Get predefined color for a grade
+  const getGradeColor = (grade: string): string => {
+    const gradeColors: Record<string, string> = {
+      'A': '#22c55e', // green
+      'B': '#3b82f6', // blue
+      'C': '#eab308', // yellow
+      'D': '#f97316', // orange
+      'F': '#ef4444'  // red
+    };
+    return gradeColors[grade.toUpperCase()] || '#6b7280';
+  };
+
   // Fetch cards from Firestore
   useEffect(() => {
     const q = query(collection(db, "cards"));
@@ -119,25 +131,12 @@ export default function HomePage() {
     card.zip.includes(search)
   );
 
-  const getRandomBadgeColor = () => {
-    const colors = [
-      'bg-red-500',
-      'bg-green-500',
-      'bg-blue-500',
-      'bg-yellow-500',
-      'bg-purple-500',
-      'bg-pink-500',
-      'bg-indigo-500',
-      'bg-teal-500',
-      'bg-orange-500'
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
 
   // Handle add card
   const handleAddCard = async (
     card: Omit<CardType, 'id' | 'badge' | 'lat' | 'lng'>,
     imageFile: File | null,
+    badgeLetter: string,
     onSuccess: () => void,
     onError: (msg: string) => void
   ) => {
@@ -174,8 +173,8 @@ export default function HomePage() {
         ...card,
         image: imageUrl,
         badge: {
-          letter: userData?.name ? userData.name[0].toUpperCase() : (user.displayName ? user.displayName[0].toUpperCase() : "U"),
-          color: getRandomBadgeColor()
+          letter: badgeLetter.toUpperCase(), // Use the selected badge letter
+          color: getGradeColor(badgeLetter) // Use saved color for the grade
         },
         lat,
         lng,
@@ -405,7 +404,18 @@ export default function HomePage() {
                 <div className="p-4 flex-1 flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-gray-500 text-sm">
                     <span>📍 {card.city}, {card.zip}</span>
-                    <span className={`ml-auto w-7 h-7 flex items-center justify-center rounded-full text-white font-bold text-base ${card.badge.color}`}>{card.badge.letter}</span>
+                    {card.badge.color.startsWith('#') ? (
+                      <span 
+                        className="ml-auto w-7 h-7 flex items-center justify-center rounded-full text-white font-bold text-base"
+                        style={{ backgroundColor: card.badge.color }}
+                      >
+                        {card.badge.letter}
+                      </span>
+                    ) : (
+                      <span className={`ml-auto w-7 h-7 flex items-center justify-center rounded-full text-white font-bold text-base ${card.badge.color}`}>
+                        {card.badge.letter}
+                      </span>
+                    )}
                   </div>
                   <div className="font-semibold text-lg text-gray-900">{card.address}</div>
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -424,7 +434,7 @@ export default function HomePage() {
                 <p className="text-gray-500 text-lg mb-2">No cards with location data</p>
                 <p className="text-gray-400 text-sm">Add cards with ZIP codes to see them on the map</p>
               </div>
-            ) : (
+            ) : ( 
               <>
                 <div className="mb-4 text-sm text-gray-600">
                   Showing {pins.length} location{pins.length !== 1 ? 's' : ''} on map
@@ -534,7 +544,7 @@ export default function HomePage() {
         {showModal && (
           <ModalForm
             onClose={() => setShowModal(false)}
-            onSubmit={(card, imageFile, done, error) => handleAddCard(card, imageFile, done, error)}
+            onSubmit={(card, imageFile, badgeLetter, done, error) => handleAddCard(card, imageFile, badgeLetter, done, error)}
             loading={addLoading}
             error={addError}
           />
@@ -559,6 +569,7 @@ interface ModalFormProps {
   onSubmit: (
     card: Omit<CardType, 'id' | 'badge' | 'lat' | 'lng'>,
     imageFile: File | null,
+    badgeLetter: string,
     done: () => void,
     error: (msg: string) => void
   ) => void;
@@ -572,6 +583,7 @@ function ModalForm({ onClose, onSubmit, loading, error }: ModalFormProps) {
     zip: '',
     address: '',
     tags: '',
+    badgeLetter: 'A', // Default grade
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
@@ -640,9 +652,10 @@ function ModalForm({ onClose, onSubmit, loading, error }: ModalFormProps) {
     onSubmit(
       submissionData,
       imageFile,
+      form.badgeLetter,
       () => {
         // Reset form on success
-        setForm({ city: '', zip: '', address: '', tags: '' });
+        setForm({ city: '', zip: '', address: '', tags: '', badgeLetter: 'A' });
         setImageFile(null);
         setImagePreview('');
         onClose();
@@ -655,12 +668,12 @@ function ModalForm({ onClose, onSubmit, loading, error }: ModalFormProps) {
   
   return (
     <Modal open={true} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-2xl flex flex-col gap-6 relative z-10 max-h-[90vh] overflow-y-auto">
+      <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-2xl w-full flex flex-col relative z-10">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+        <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-gray-200">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Add New Card</h2>
-            <p className="text-sm text-gray-500 mt-1">Fill in the details to create a new card</p>
+            <h2 className="text-3xl font-bold text-gray-900">Add New Property</h2>
+            <p className="text-sm text-gray-500 mt-1.5">Fill in the details to create a new property</p>
           </div>
           <button 
             type="button" 
@@ -674,120 +687,147 @@ function ModalForm({ onClose, onSubmit, loading, error }: ModalFormProps) {
           </button>
         </div>
 
-        {/* Image Upload Section */}
-        <div className="flex flex-col gap-3">
-          <label className="text-sm font-semibold text-gray-700">Card Image</label>
-          {!imagePreview ? (
-            <div
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
-                dragActive 
-                  ? 'border-purple-500 bg-purple-50' 
-                  : 'border-gray-300 hover:border-purple-400 hover:bg-gray-50'
-              }`}
-            >
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+        {/* Main Content - Two Column Layout */}
+        <div className="px-8 py-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column - Image Upload */}
+          <div className="flex flex-col gap-4">
+              <label className="text-sm font-semibold text-gray-700">Property Image</label>
+            {!imagePreview ? (
+              <div
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-all h-64 flex items-center justify-center ${
+                  dragActive 
+                    ? 'border-purple-500 bg-purple-50' 
+                    : 'border-gray-300 hover:border-purple-400 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 flex items-center justify-center">
+                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-gray-700 font-medium text-sm">Drag & drop an image here</p>
+                    <p className="text-xs text-gray-500 mt-1">or</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-5 py-2 bg-gradient-to-r from-purple-400 to-blue-400 text-white font-semibold rounded-lg hover:from-purple-500 hover:to-blue-500 transition shadow-md text-sm"
+                  >
+                    Browse Files
+                  </button>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 10MB</p>
                 </div>
-                <div>
-                  <p className="text-gray-700 font-medium">Drag & drop an image here</p>
-                  <p className="text-sm text-gray-500 mt-1">or</p>
-                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleChange}
+                />
+              </div>
+            ) : (
+              <div className="relative group h-64">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full h-full object-cover rounded-xl border-2 border-gray-200"
+                />
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-400 text-white font-semibold rounded-lg hover:from-purple-500 hover:to-blue-500 transition shadow-md"
+                  onClick={removeImage}
+                  className="absolute top-3 right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition shadow-lg opacity-0 group-hover:opacity-100"
+                  aria-label="Remove image"
                 >
-                  Browse Files
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
-                <p className="text-xs text-gray-400 mt-2">PNG, JPG, GIF up to 10MB</p>
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleChange}
+            )}
+          </div>
+
+          {/* Right Column - Form Fields */}
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-4">
+              <InputField 
+                name="address" 
+                type="text" 
+                placeholder="Full Address" 
+                value={form.address} 
+                onChange={handleChange} 
+                required 
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <InputField 
+                  name="city" 
+                  type="text" 
+                  placeholder="City" 
+                  value={form.city} 
+                  onChange={handleChange} 
+                  required 
+                />
+                <InputField 
+                  name="zip" 
+                  type="text" 
+                  placeholder="ZIP Code" 
+                  value={form.zip} 
+                  onChange={handleChange} 
+                  required 
+                />
+              </div>
+              <InputField 
+                name="tags" 
+                type="text" 
+                placeholder="Tags (comma separated)" 
+                value={form.tags} 
+                onChange={handleChange} 
               />
             </div>
-          ) : (
-            <div className="relative group">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-full h-64 object-cover rounded-xl border-2 border-gray-200"
-              />
-              <button
-                type="button"
-                onClick={removeImage}
-                className="absolute top-3 right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition shadow-lg opacity-0 group-hover:opacity-100"
-                aria-label="Remove image"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+
+            {/* Grade Selection */}
+            <div className="flex flex-col gap-3">
+              <label className="block text-sm font-semibold text-gray-700">
+                Grade <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-3">
+                {['A', 'B', 'C', 'D', 'F'].map((letter) => (
+                  <button
+                    key={letter}
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, badgeLetter: letter }))}
+                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-lg transition-all shadow-sm border-2 cursor-pointer ${
+                      form.badgeLetter === letter
+                        ? 'bg-gradient-to-r from-purple-400 to-blue-400 text-white border-purple-500 shadow-md scale-105'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300 hover:bg-purple-50'
+                    }`}
+                  >
+                    {letter}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500">Select a grade for this property</p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Form Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <InputField 
-              name="address" 
-              type="text" 
-              placeholder="Full Address" 
-              value={form.address} 
-              onChange={handleChange} 
-              required 
-            />
-          </div>
-          <InputField 
-            name="city" 
-            type="text" 
-            placeholder="City" 
-            value={form.city} 
-            onChange={handleChange} 
-            required 
-          />
-          <InputField 
-            name="zip" 
-            type="text" 
-            placeholder="ZIP Code" 
-            value={form.zip} 
-            onChange={handleChange} 
-            required 
-          />
-          <div className="md:col-span-2">
-            <InputField 
-              name="tags" 
-              type="text" 
-              placeholder="Tags (comma separated, e.g., restaurant, downtown, popular)" 
-              value={form.tags} 
-              onChange={handleChange} 
-            />
+                <span>{error}</span>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {error}
-          </div>
-        )}
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-2 border-t border-gray-200">
+        <div className="flex gap-3 px-8 pb-8 pt-6 border-t border-gray-200">
           <button
             type="button"
             onClick={onClose}
@@ -808,7 +848,7 @@ function ModalForm({ onClose, onSubmit, loading, error }: ModalFormProps) {
             ) : (
               <span className="flex items-center justify-center gap-2">
                 <FiPlus className="w-5 h-5" />
-                Add Card
+                Add Property
               </span>
             )}
           </Button>
