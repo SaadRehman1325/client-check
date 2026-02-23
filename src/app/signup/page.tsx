@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { app, auth } from '../../firebase';
@@ -18,6 +19,8 @@ export default function SignupPage() {
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string }>({});
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +99,7 @@ export default function SignupPage() {
 
         {/* Logo */}
         <div className="mb-6">
-          <Image src="/logo.png" alt="Client Check" width={56} height={56} className="h-14 w-14 object-contain" />
+        <Image src="/logo.png" alt="Client Check" width={56} height={56} className="h-25 w-25 object-contain" />
         </div>
 
         {/* White card */}
@@ -131,14 +134,52 @@ export default function SignupPage() {
             {/* Password */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="password" className="text-[13px] font-semibold text-gray-700">Password</label>
-              <input id="password" name="password" type="password" autoComplete="off" placeholder="At least 6 characters" value={formData.password} onChange={handleChange} className={inputClass} />
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="off"
+                  placeholder="At least 6 characters"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`${inputClass} pr-11`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((p) => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 rounded-lg transition-colors cursor-pointer"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                </button>
+              </div>
               {errors.password && <span className="text-red-500 text-[12px]">{errors.password}</span>}
             </div>
 
             {/* Confirm Password */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="confirmPassword" className="text-[13px] font-semibold text-gray-700">Confirm Password</label>
-              <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="off" placeholder="Re-enter password" value={formData.confirmPassword} onChange={handleChange} className={inputClass} />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="off"
+                  placeholder="Re-enter password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className={`${inputClass} pr-11`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((p) => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 rounded-lg transition-colors cursor-pointer"
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                </button>
+              </div>
               {errors.confirmPassword && <span className="text-red-500 text-[12px]">{errors.confirmPassword}</span>}
             </div>
 
