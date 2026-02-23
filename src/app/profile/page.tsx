@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   FiUser,
@@ -59,7 +59,7 @@ function formatDate(timestamp: { seconds: number; nanoseconds: number } | undefi
   });
 }
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -1269,5 +1269,19 @@ export default function ProfilePage() {
         )}
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50/30 to-white">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-500" />
+        </div>
+      }
+    >
+      <ProfilePageContent />
+    </Suspense>
   );
 }
