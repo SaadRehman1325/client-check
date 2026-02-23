@@ -171,7 +171,7 @@ export const createCheckoutSession = onCall(
         priceIdLength: trimmedPriceId.length,
       });
 
-      // Create checkout session
+      // Create checkout session (trial is handled separately as no-card plan)
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: "subscription",

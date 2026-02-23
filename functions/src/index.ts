@@ -8,6 +8,15 @@
  */
 
 import {createCheckoutSession} from "./stripe/createCheckoutSession";
+import {createBillingPortalSession} from "./stripe/createBillingPortalSession";
+import {startFreeTrial} from "./stripe/startFreeTrial";
 import {webhook} from "./stripe/webhook";
+import {redeemCoupon} from "./coupons/redeemCoupon";
 
-export {createCheckoutSession, webhook};
+export {
+  createCheckoutSession,
+  createBillingPortalSession,
+  startFreeTrial,
+  webhook,
+  redeemCoupon,
+};

@@ -5,8 +5,8 @@ import { useAuth } from "./useAuth";
 
 export interface Subscription {
   userId: string;
-  stripeCustomerId: string;
-  stripeSubscriptionId: string;
+  stripeCustomerId?: string;   // absent for no-card trial
+  stripeSubscriptionId?: string;
   status: "active" | "canceled" | "past_due" | "trialing";
   planType: "monthly" | "yearly";
   currentPeriodEnd: {
@@ -40,6 +40,7 @@ export function useSubscription() {
         } else {
           setSubscription(null);
         }
+        // Always mark loaded once we have any snapshot (cache or server) so we don't block navigation
         setLoading(false);
       },
       (error) => {
@@ -51,23 +52,13 @@ export function useSubscription() {
 
     return () => unsubscribe();
   }, [user]);
-  console.log('useSubscription raw data:', subscription);
-  
+
   const isActive = subscription?.status === "active" || subscription?.status === "trialing";
   const isExpired = subscription?.currentPeriodEnd 
     ? new Date(subscription.currentPeriodEnd.seconds * 1000) < new Date()
     : false; // Changed from true to false - if no expiration date, consider it not expired
 
   const finalIsActive = isActive && !isExpired;
-
-  console.log('useSubscription computed:', {
-    status: subscription?.status,
-    isActive,
-    isExpired,
-    currentPeriodEnd: subscription?.currentPeriodEnd,
-    finalIsActive,
-    loading
-  });
 
   return {
     subscription,

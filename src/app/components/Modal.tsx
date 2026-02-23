@@ -1,4 +1,7 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type ModalProps = {
   open: boolean;
@@ -7,13 +10,25 @@ type ModalProps = {
 };
 
 const Modal: React.FC<ModalProps> = ({ open, onClose, children }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   if (!open) return null;
-  return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="relative z-10 w-full max-w-5xl">{children}</div>
+  if (!mounted || typeof document === 'undefined') return null;
+
+  const modalContent = (
+    <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="relative z-10 w-full max-w-5xl flex items-center justify-center">
+        {children}
+      </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default Modal; 

@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import InputField from '../components/InputField';
-import Button from '../components/Button';
+import Link from 'next/link';
+import Image from 'next/image';
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { app, auth } from '../../firebase';
@@ -14,12 +14,7 @@ function validateEmail(email: string) {
 
 export default function SignupPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string }>({});
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -39,18 +34,10 @@ export default function SignupPage() {
     if (Object.keys(newErrors).length === 0) {
       setLoading(true);
       try {
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          formData.email,
-          formData.password
-        );
-        
-        // Update user profile
+        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
         if (auth.currentUser) {
           await updateProfile(auth.currentUser, { displayName: formData.name });
         }
-
-        // Create user document in Firestore
         const db = getFirestore(app);
         const userRef = doc(db, 'users', userCredential.user.uid);
         const userData = {
@@ -62,17 +49,12 @@ export default function SignupPage() {
           updatedAt: serverTimestamp(),
         };
         await setDoc(userRef, userData);
-        
-        // Store user data in localStorage
-        // Note: We exclude Timestamp objects from localStorage
-        const userDataForStorage = {
+        localStorage.setItem('clientcheck_user_data', JSON.stringify({
           name: formData.name,
           email: formData.email.toLocaleLowerCase(),
           userId: userCredential.user.uid,
           userType: 'user',
-        };
-        localStorage.setItem('clientcheck_user_data', JSON.stringify(userDataForStorage));
-        
+        }));
         router.push('/packages');
       } catch (error: any) {
         setFirebaseError(error.message || "Signup failed");
@@ -89,84 +71,113 @@ export default function SignupPage() {
     setFirebaseError(null);
   };
 
+  const inputClass = "w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400/30 focus:border-purple-300 transition";
+
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{fontFamily: 'Poppins, sans-serif'}}>
-      {/* Diagonal gradient background */}
-      <div className="absolute inset-0 -z-10">
-        <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
-          <polygon points="0,0 100,0 100,100" fill="#a18cd1" />
-          <polygon points="0,0 0,100 100,100" fill="#f8fafc" />
-        </svg>
+    <div
+      className="min-h-screen flex flex-col relative overflow-hidden"
+      style={{
+        fontFamily: 'Poppins, sans-serif',
+        background: 'linear-gradient(135deg, #e0e7ff 0%, #ede9fe 30%, #dbeafe 60%, #e0e7ff 100%)',
+      }}
+    >
+      {/* "< Home page" link */}
+      <div className="absolute top-5 left-6 sm:left-12 z-10">
+        <Link href="/" className="flex items-center gap-1.5 text-[13px] font-medium text-gray-500 hover:text-gray-700 transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+          Home page
+        </Link>
       </div>
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl px-10 py-12 flex flex-col items-center" style={{boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)'}}>
-        <h1 className="text-3xl font-bold mb-10 text-black text-center">Sign Up</h1>
-        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-6">
-          <InputField
-            id="name"
-            name="name"
-            type="text"
-            autoComplete="off"
-            placeholder="Name"
-            value={formData.name}
-            onChange={handleChange}
-            error={errors.name}
-          />
-          <InputField
-            id="email"
-            name="email"
-            type="text"
-            autoComplete="off"
-            placeholder="Email Address"
-            value={formData.email}
-            onChange={handleChange}
-            error={errors.email}
-          />
-          <InputField
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="off"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            error={errors.password}
-          />
-          <InputField
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            autoComplete="off"
-            placeholder="Confirm Password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            error={errors.confirmPassword}
-          />
-          {firebaseError && (
-            <div className="text-red-500 text-sm text-center">{firebaseError}</div>
-          )}
-          <Button type="submit" disabled={loading}>
-            {loading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
-                </svg>
-                Signing up...
-              </span>
-            ) : (
-              "SIGN UP"
-            )}
-          </Button>
-        </form>
-        <div className="mt-8 text-center w-full">
-          <a
-            href="/login"
-            className="inline-block text-base font-semibold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent relative transition-colors duration-200 group"
-          >
-            <span className="group-hover:underline group-hover:decoration-4 group-hover:underline-offset-4 transition-all duration-300">Already have an account? Login</span>
-          </a>
+
+      {/* Content */}
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+
+        {/* Logo */}
+        <div className="mb-6">
+          <Image src="/logo.png" alt="Client Check" width={56} height={56} className="h-14 w-14 object-contain" />
         </div>
-      </div>
+
+        {/* White card */}
+        <div className="w-full max-w-[420px] bg-white rounded-3xl shadow-xl shadow-indigo-200/40 p-8 sm:p-10">
+
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-[1.6rem] font-bold tracking-tight text-gray-900 mb-1.5">
+              Create Account
+            </h1>
+            <p className="text-[14px] text-gray-400">
+              Start your free trial — no credit card required.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+
+            {/* Name */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="name" className="text-[13px] font-semibold text-gray-700">Full Name</label>
+              <input id="name" name="name" type="text" autoComplete="off" placeholder="John Doe" value={formData.name} onChange={handleChange} className={inputClass} />
+              {errors.name && <span className="text-red-500 text-[12px]">{errors.name}</span>}
+            </div>
+
+            {/* Email */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="email" className="text-[13px] font-semibold text-gray-700">Email</label>
+              <input id="email" name="email" type="text" autoComplete="off" placeholder="you@example.com" value={formData.email} onChange={handleChange} className={inputClass} />
+              {errors.email && <span className="text-red-500 text-[12px]">{errors.email}</span>}
+            </div>
+
+            {/* Password */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="password" className="text-[13px] font-semibold text-gray-700">Password</label>
+              <input id="password" name="password" type="password" autoComplete="off" placeholder="At least 6 characters" value={formData.password} onChange={handleChange} className={inputClass} />
+              {errors.password && <span className="text-red-500 text-[12px]">{errors.password}</span>}
+            </div>
+
+            {/* Confirm Password */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="confirmPassword" className="text-[13px] font-semibold text-gray-700">Confirm Password</label>
+              <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="off" placeholder="Re-enter password" value={formData.confirmPassword} onChange={handleChange} className={inputClass} />
+              {errors.confirmPassword && <span className="text-red-500 text-[12px]">{errors.confirmPassword}</span>}
+            </div>
+
+            {firebaseError && (
+              <p className="text-red-500 text-[13px] text-center bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+                {firebaseError}
+              </p>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-1 inline-flex items-center justify-center gap-2 text-white font-semibold text-[15px] py-3.5 rounded-xl transition-all shadow-lg shadow-purple-300/30 hover:shadow-xl hover:shadow-purple-300/40 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c084fc 100%)' }}
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                  Creating account...
+                </>
+              ) : (
+                'Create account'
+              )}
+            </button>
+          </form>
+
+          {/* Bottom link */}
+          <p className="mt-7 text-center text-[13px] text-gray-500">
+            Already have an account?{' '}
+            <Link href="/login" className="font-semibold text-gray-800 underline underline-offset-2 decoration-gray-300 hover:decoration-purple-400 transition-colors">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </main>
     </div>
   );
 }

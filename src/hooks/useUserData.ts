@@ -8,6 +8,7 @@ export interface UserData {
   email: string;
   userId: string;
   userType: string;
+  imageUrl?: string;
   createdAt?: any;
   updatedAt?: any;
 }
@@ -94,7 +95,17 @@ export function useUserData(user: User | null) {
     fetchUserData();
   }, [user]);
 
-  return { userData, loading, error };
+  // Keep localStorage in sync when userData is updated (e.g. from profile edit)
+  useEffect(() => {
+    if (user?.uid && userData) {
+      localStorage.setItem(
+        USER_DATA_STORAGE_KEY,
+        JSON.stringify({ ...userData, userId: user.uid })
+      );
+    }
+  }, [user?.uid, userData]);
+
+  return { userData, loading, error, setUserData };
 }
 
 /**

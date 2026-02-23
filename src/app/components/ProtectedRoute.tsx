@@ -1,40 +1,38 @@
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../hooks/useAuth";
 import { useSubscription } from "../../hooks/useSubscription";
+import { useUserData } from "../../hooks/useUserData";
 import { ReactNode, useEffect } from "react";
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  const { isActive, loading: subscriptionLoading, subscription } = useSubscription();
+  const { userData, loading: userDataLoading } = useUserData(user);
+  const { isActive, loading: subscriptionLoading } = useSubscription();
   const router = useRouter();
+
+  // Schema: userType "user" | "admin" (see FIRESTORE_SCHEMA.md). Admin can use the system regardless of subscription.
+  const isAdmin = userData?.userType === "admin";
+  const isUserRole = userData?.userType === "user";
+  // Only enforce subscription when userType is "user"; admins bypass.
+  const needsSubscription = !!user && isUserRole;
+  const waitingForRole = !!user && userDataLoading;
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.replace("/login");
+      router.replace("/");
     }
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    console.log('ProtectedRoute check:', {
-      authLoading,
-      subscriptionLoading,
-      user: !!user,
-      isActive,
-      hasSubscriptionData: !!subscription,
-    });
-    
-    if (!authLoading && !subscriptionLoading && user) {
-      // Only redirect if we have actually received subscription data
-      // If subscription is null and loading is false, data might still be arriving
-      // Wait for actual subscription data before making decision
-      if (!isActive && subscription !== null) {
-        console.log("Redirecting to packages - isActive:", isActive);
-        router.replace("/packages");
-      }
+    if (authLoading || subscriptionLoading || waitingForRole || !user) return;
+    if (needsSubscription && !isActive) {
+      router.replace("/packages");
     }
-  }, [user, authLoading, subscriptionLoading, isActive, subscription, router]);
+  }, [user, authLoading, subscriptionLoading, waitingForRole, needsSubscription, isActive, router]);
 
-  if (authLoading || subscriptionLoading) {
+  // For admins we don't need subscription loaded to render; for "user" we do (handled above via needsSubscription).
+  const waitingForAccess = waitingForRole || (needsSubscription && subscriptionLoading);
+  if (authLoading || waitingForAccess) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
@@ -47,7 +45,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!user) return null;
 
-  if (!isActive) {
+  if (needsSubscription && !isActive) {
     return null; // Will redirect to packages
   }
 
