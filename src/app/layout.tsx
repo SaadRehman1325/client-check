@@ -10,7 +10,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: "Client Check",
-  description: "Check your traders data",
+  description: "Your trusted location dashboard",
 };
 
 export default function RootLayout({
