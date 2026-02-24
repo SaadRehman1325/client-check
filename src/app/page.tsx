@@ -68,22 +68,22 @@ export default function WelcomePage() {
 
           {/* Headline */}
           <h1 className="text-[2.5rem] sm:text-[3.4rem] lg:text-[4rem] font-bold leading-[1.08] tracking-tight text-gray-900 mb-6">
-            A location system that{' '}
+            A vetting system that{' '}
             <br className="hidden sm:block" />
             works like a{' '}
             <span className="bg-gradient-to-r from-indigo-600 to-purple-500 bg-clip-text text-transparent px-1 py-0.5 rounded-xl" style={{ backgroundColor: 'rgba(129,140,248,0.15)' }}>
-              Manager
+              Foreman
             </span>
           </h1>
 
           {/* Subtext */}
           <p className="text-[15px] sm:text-[17px] text-gray-500 leading-relaxed max-w-[600px] mx-auto mb-5   ">
-            Great traders deserve a system that does it all, from managing locations to helping you track and grow your business.
+          The all-in-one tool to check client history before you even load the truck. Built for contractors who value their time.
           </p>
 
           {/* Feature bullets */}
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 mb-10">
-            {['Manage locations', 'Multiple payment plans', '24/7 support'].map((text) => (
+            {['Multiple locations', 'Up to date data', '24/7 support'].map((text) => (
               <span key={text} className="flex items-center gap-2 text-[14px] text-gray-500 font-medium">
                 <svg className="w-4 h-4 text-indigo-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
